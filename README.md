@@ -27,7 +27,7 @@ Or install it yourself as:
 
 ## Config
 
-   tailf:
+    tailf:
       files:
         - topic: haproxy
           prefix: /var/log/haproxy/haproxy
@@ -37,7 +37,7 @@ Or install it yourself as:
       max_batch_lines: 1024
       from_begining: true
       delete_old_tailed_files: true
-   kafka:
+    kafka:
       brokers: ["broker1:9092", "broker2:9092", "broker3:9092"]
       producer_type: sync
 
