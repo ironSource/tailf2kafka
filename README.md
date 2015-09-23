@@ -20,7 +20,7 @@ Or install it yourself as:
 ## Usage
 
     $ tailf2kafka -h
-    Usage: /ssa/system/scripts/tailf2kafka-zopa.rb [options]
+    Usage: tailf2kafka [options]
             --config PATH                Path to settings config
         -h, --help                       Display this screen
     $
