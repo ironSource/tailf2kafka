@@ -65,7 +65,7 @@ so the tool will watch for files that match - prefix + time_pattern + suffix
 ## Features
 
 * The config is validated by [schash](https://github.com/ryotarai/schash) gem
-* Files existing files are watched for changes by [rb-notify](https://github.com/nex3/rb-inotify) gem
+* Tailed files are watched for changes by [rb-notify](https://github.com/nex3/rb-inotify) gem
 * Dirnames of all files prefixes are watched for new files creation or files moved to the dir and are automaticaly
 added to failing.
 * As well dirnames are watched for deletion or files being moved out of directory, and they are removed from the  list of files watched for changing.
