@@ -188,7 +188,7 @@ def delete_old_tailed_files
   @mutex.synchronize do
     @files.each_key do |path|
       unless path.match(Regexp.new(Time.now.strftime(@files[path][:pattern])))
-        if File.exists?(path) and File.stat(path).ino == @files[path][:inode] and File.stat(path).size == @files[path][:offset]
+        if File.exists?(path) and File.stat(path).ino == @files[path][:inode] and File.stat(path).size == @files[path][:offset] and (Time.now - File.stat(path).mtime) > 30
           puts "Deleteing old time pattern fully kafka produced file #{path}"
           FileUtils.rm_r(path)
         end
