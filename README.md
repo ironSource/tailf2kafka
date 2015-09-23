@@ -62,14 +62,15 @@ Or install it yourself as:
   * suffix - optional suffix of files to watch for
 so the tool will watch for files that match - prefix + time_pattern + suffix
 
-## Features
+## Features/Facts
 
 * The config is validated by [schash](https://github.com/ryotarai/schash) gem
 * Tailed files are watched for changes by [rb-notify](https://github.com/nex3/rb-inotify) gem
 * Dirnames of all files prefixes are watched for new files creation or files moved to the dir and are automaticaly
-added to failing.
+added to tailing.
 * As well dirnames are watched for deletion or files being moved out of directory, and they are removed from the  list of files watched for changing.
 * Based time_pattern, files are periodicaly autodeleted , thus avoiding need for log rotation tools.
+* Files are matched by converting time_pattern to a regexp
 
 ## Contributing
 
