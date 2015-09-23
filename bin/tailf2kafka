@@ -168,7 +168,7 @@ end
   dir = File.dirname(tailf_file[:prefix])
   if File.exists?(dir) and File.directory?(dir)
     @dirs[dir] ||= []
-    @dirs[dir] << { :prefix => File.basename(tailf_file[:prefix]), :pattern => tailf_file[:time_pattern], :suffix => "#{tailf_file[:suffix]}" }
+    @dirs[dir] << { :prefix => File.basename(tailf_file[:prefix]), :pattern => tailf_file[:time_pattern], :suffix => "#{tailf_file[:suffix]}", :topic => tailf_file[:topic]}
     Dir.glob("#{tailf_file[:prefix]}*#{tailf_file[:suffix]}").each do |path|
       if path.match(Regexp.new(time_pattern_to_regexp(tailf_file[:time_pattern])))
         unless File.directory?(path)
@@ -207,12 +207,12 @@ Thread.new { loop { @timers.wait } }
   @create_notifier.watch(dir, :create, :moved_to) do |event|
     @mutex.synchronize do
       path = "#{dir}/#{event.name}"
-      matches = @dirs[dir].select{|h| event.name.match(Regexp.new(h[:prefix] + time_pattern_to_regexp(h[:pattern]) + h[:suffix]))}.empty?
+      match = @dirs[dir].detect{|h| event.name.match(Regexp.new(h[:prefix] + time_pattern_to_regexp(h[:pattern]) + h[:suffix]))}
       unless matches.empty?
         unless File.directory?(path)
           unless @threads.has_key?(path)
             puts "File #{event.name} was created in / moved into watched dir #{dir}"
-            @files[path] = { :pattern => match.first[:pattern], :topic => File.basename(@dirs[dir].detect{|prefix| path.start_with?(prefix)}), :inode => File.stat(path).ino, :offset => 0 }
+            @files[path] = { :pattern => match[:pattern], :topic => match[:topic], :inode => File.stat(path).ino, :offset => 0 }
             @threads[path] = Thread.new { tailf(path) }
           end
         end
