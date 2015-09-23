@@ -43,7 +43,6 @@ Or install it yourself as:
       producer_type: sync
       produce: true
 
-global configs:
 * kafka.brokers - Array of kafka brokers to connect to
 * kafka.producer_type - type of producer sync or async
 * kafka.produce - if false will not conect to kafka and will not produce any messages to it
@@ -58,6 +57,8 @@ global configs:
   * time_pattern - ruby time pattern of files to tail
   * suffix - optional suffix of files to watch for
 so the tool will watch for files that match - prefix + time_pattern + suffix
+
+## Features
 
 * The config is validated by [schash](https://github.com/ryotarai/schash) gem
 * Files existing files are watched for changes by [rb-notify](https://github.com/nex3/rb-inotify) gem
