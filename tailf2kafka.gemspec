@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
   s.has_rdoc    = false 
 
   s.add_dependency('poseidon')
+  s.add_dependency('snappy')
   s.add_dependency('hash_symbolizer')
   s.add_dependency('schash')
   s.add_dependency('rb-inotify')
