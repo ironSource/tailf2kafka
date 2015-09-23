@@ -54,7 +54,7 @@ Or install it yourself as:
 * tailf.flush_interval - how often in seconds to save the offsets to a file
 * tailf.max_batch_lines - max number of lines to batch in each send request
 * tailf.from_beggining - in case of a new file added to tailing , if to start tailing from beggining or end of the file
-* tailf.delete_old_tailed_files - if to delete files once their time_pattern does not match and if they have been fully produced to kafka
+* tailf.delete_old_tailed_files - if to delete files once their time_pattern does not match the current time window and if they have been fully produced to kafka
 * tailf.files - array of file configs for tail, each tailed file configs consists of:
   * topic - which kafka topic to produce the messages to
   * prefix - the files prefix to watch for
