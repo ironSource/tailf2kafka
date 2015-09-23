@@ -7,7 +7,7 @@ Watch and tail files in dirs with specified filename time based patterns and pus
 
 Install libsnappy dev libs if you want to take advantage of compression
 
-    apt-get intall libsnappy-dev
+    apt-get install libsnappy-dev
 
 Add this line to your application's Gemfile:
 
