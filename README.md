@@ -5,13 +5,17 @@ Watch and tail files in dirs with specified filename time based patterns and pus
 
 ## Installation
 
+Install libsnappy dev libs if you want to take advantage of compression
+
+   apt-get intall libsnappy-dev
+
 Add this line to your application's Gemfile:
 
     gem 'tailf2kafka'
 
 And then execute:
 
-    $ bundle
+    $ bundle install
 
 Or install it yourself as:
 
