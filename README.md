@@ -31,6 +31,7 @@ Or install it yourself as:
       files:
         - topic: haproxy
           prefix: /var/log/haproxy/haproxy
+          suffix: ''
           time_pattern: ".%Y-%m-%d.%H"
       position_file: "/var/lib/haproxy/tail2kafka.offsets"
       flush_interval: 1
@@ -40,6 +41,7 @@ Or install it yourself as:
     kafka:
       brokers: ["broker1:9092", "broker2:9092", "broker3:9092"]
       producer_type: sync
+      produce: true
 
 ## Contributing
 
