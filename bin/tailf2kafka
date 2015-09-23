@@ -208,7 +208,7 @@ Thread.new { loop { @timers.wait } }
     @mutex.synchronize do
       path = "#{dir}/#{event.name}"
       match = @dirs[dir].detect{|h| event.name.match(Regexp.new(h[:prefix] + time_pattern_to_regexp(h[:pattern]) + h[:suffix]))}
-      unless matches.empty?
+      if match
         unless File.directory?(path)
           unless @threads.has_key?(path)
             puts "File #{event.name} was created in / moved into watched dir #{dir}"
