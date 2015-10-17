@@ -141,8 +141,11 @@ def tailf(path)
   end
   @tailf_notifier.watch(path, :modify) do |event|
     unless file.closed?
-      batch = file.each_line.take(@max_batch_lines)
-      kafka_produce(path, batch, file.pos) unless batch.empty?
+      loop do
+        batch = file.each_line.take(@max_batch_lines)
+        break if batch.empty?
+        kafka_produce(path, batch, file.pos)
+      end
     else
       puts "watcher got modify event on closed file #{event.name}"
     end
