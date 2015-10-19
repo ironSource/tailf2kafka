@@ -125,7 +125,7 @@ end
 def kafka_produce(path, buffer, offset)
   messages = []
   buffer.each do |msg|
-    messages << Poseidon::MessageToSend.new(@files[path][:topic], msg)
+    messages << Poseidon::MessageToSend.new(@files[path][:topic], msg.strip)
   end
   @producer_queue.push({ :path => path, :messages => messages, :offset => offset})
 end
