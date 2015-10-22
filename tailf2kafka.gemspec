@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.summary     = "Watch and tail files with specified time based patterns and push them to kafka"
   s.description = "Watch and tail files with specified time based patterns and push them to kafka"
   s.license     = 'MIT'
-  s.has_rdoc    = false 
+  s.has_rdoc    = false
 
   s.add_dependency('poseidon')
   s.add_dependency('snappy')
@@ -21,6 +21,7 @@ Gem::Specification.new do |s|
   s.add_dependency('schash')
   s.add_dependency('rb-inotify')
   s.add_dependency('timers')
+  s.add_dependency('mixlib-shellout')
 
   s.add_development_dependency('rake')
 

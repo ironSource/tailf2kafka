@@ -9,6 +9,8 @@ require 'rb-inotify'
 require 'timers'
 require 'socket'
 require 'fileutils'
+require 'logger'
+require 'mixlib/shellout'
 
 $stdout.sync = true
 
@@ -16,9 +18,21 @@ Thread.abort_on_exception = true
 
 @config = nil
 
+loglevels = {
+  :debug => Logger::DEBUG,
+  :info => Logger::INFO,
+  :warn => Logger::WARN,
+  :error => Logger::Error,
+  :fatal => Logger::FATAL,
+  :unknown => Logger::UNKNOWN
+}
+
+@loglevel = Logger::INFO
+
 opts = OptionParser.new
 opts.banner = "Usage: #{$0} [options]"
 opts.on( '--config PATH', String, 'Path to settings config' ) { |c| @config = c }
+opts.on( '--log-level [LEVEL]', [:debug, :info, :warn, :error, :fatal, :unknown] ) { |l| @loglevel = loglevels[l] }
 opts.on( '-h', '--help', 'Display this screen' ) { puts opts; exit 0 }
 opts.parse!
 
@@ -26,6 +40,8 @@ unless @config
   puts opts
   exit 1
 end
+
+@logger = Logger.new(STDOUT)
 
 @settings = YAML.load_file(@config).symbolize_keys(true)
 
@@ -43,6 +59,7 @@ validator = Schash::Validator.new do
       max_batch_lines: integer,
       from_begining: boolean,
       delete_old_tailed_files: optional(boolean),
+      post_delete_command: optional(string),
     },
     kafka: {
       brokers: array_of(string),
@@ -53,8 +70,8 @@ validator = Schash::Validator.new do
 end
 
 unless validator.validate(@settings).empty?
-  puts "ERROR: bad settings "
-  pp validator.validate(@settings)
+  @logger.error("ERROR: bad settings")
+  @logger.error(validator.validate(@settings))
   exit 1
 end
 
@@ -114,7 +131,7 @@ load_position_file
     begin
       @producer.send_messages(batch[:messages]) if @produce
     rescue Poseidon::Errors::UnableToFetchMetadata
-      puts "Got Poseidon::Errors::UnableToFetchMetadata while trying to produce kafka messages, retrying in 1 second ..."
+      @logger.warn("Got Poseidon::Errors::UnableToFetchMetadata while trying to produce kafka messages, retrying in 1 second ...")
       sleep 1
       retry
     end
@@ -123,31 +140,52 @@ load_position_file
 end
 
 def kafka_produce(path, buffer, offset)
+  truncated = nil
+
   messages = []
-  buffer.each do |msg|
-    messages << Poseidon::MessageToSend.new(@files[path][:topic], msg.strip)
+  while msg = buffer.shift
+    unless msg[-1] == "\n"
+      if buffer.empty?
+        truncated = msg
+      else
+        msg = msg + buffer.shift
+        messages << Poseidon::MessageToSend.new(@files[path][:topic], msg.strip)
+      end
+    else
+      messages << Poseidon::MessageToSend.new(@files[path][:topic], msg.strip)
+    end
   end
   @producer_queue.push({ :path => path, :messages => messages, :offset => offset})
+
+  truncated
 end
 
 def tailf(path)
   file = File.open(path, 'r')
   @files[path][:fd] = file
   file.seek(@files[path][:offset], IO::SEEK_SET)
+
+  truncated = nil
   loop do #Fast read file in batches until we reach EOF upon which we start the tailf modify watcher
     batch = file.each_line.take(@max_batch_lines)
     break if batch.empty?
-    kafka_produce(path, batch, file.pos)
+    batch.unshift(truncated + batch.shift) if truncated
+    truncated = kafka_produce(path, batch, file.pos)
   end
+
+  mutex = Mutex.new
   @tailf_notifier.watch(path, :modify) do |event|
-    unless file.closed?
-      loop do
-        batch = file.each_line.take(@max_batch_lines)
-        break if batch.empty?
-        kafka_produce(path, batch, file.pos)
+    mutex.synchronize do
+      unless file.closed?
+        loop do
+          batch = file.each_line.take(@max_batch_lines)
+          break if batch.empty?
+          batch.unshift(truncated + batch.shift) if truncated
+          truncated = kafka_produce(path, batch, file.pos)
+        end
+      else
+        @logger.warn("watcher got modify event on closed file #{event.name}")
       end
-    else
-      puts "watcher got modify event on closed file #{event.name}"
     end
   end
 end
@@ -192,8 +230,12 @@ def delete_old_tailed_files
     @files.each_key do |path|
       unless path.match(Regexp.new(Time.now.strftime(@files[path][:pattern])))
         if File.exists?(path) and File.stat(path).ino == @files[path][:inode] and File.stat(path).size == @files[path][:offset] and (Time.now - File.stat(path).mtime) > 30
-          puts "Deleteing old time pattern fully kafka produced file #{path}"
+          @logger.info("Deleteing old time pattern fully kafka produced file #{path}")
           FileUtils.rm_r(path)
+          if @settings[:tailf].has_key?(:post_delete_command)
+            command = Mixlib::ShellOut.new(@settings[:tailf][:post_delete_command])
+            command.run_command
+          end
         end
       end
     end
@@ -214,7 +256,7 @@ Thread.new { loop { @timers.wait } }
       if match
         unless File.directory?(path)
           unless @threads.has_key?(path)
-            puts "File #{event.name} was created in / moved into watched dir #{dir}"
+            @logger.info("File #{event.name} was created in / moved into watched dir #{dir}")
             @files[path] = { :pattern => match[:pattern], :topic => match[:topic], :inode => File.stat(path).ino, :offset => 0 }
             @threads[path] = Thread.new { tailf(path) }
           end
@@ -227,7 +269,7 @@ Thread.new { loop { @timers.wait } }
     @mutex.synchronize do
       path = "#{dir}/#{event.name}"
       if @threads.has_key?(path)
-        puts "File #{event.name} was deleted / moved from watched dir #{dir}"
+        @logger.info("File #{event.name} was deleted / moved from watched dir #{dir}")
         if @threads[path].alive?
           @threads[path].terminate
           @threads[path].join
