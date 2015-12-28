@@ -194,7 +194,8 @@ end
   'Y' => '[0-9]{4}',
   'm' => '[0-9]{2}',
   'd' => '[0-9]{2}',
-  'H' => '[0-9]{2}'
+  'H' => '[0-9]{2}',
+  'M' => '[0-9]{2}'
 }
 
 def time_pattern_to_regexp(pattern)
@@ -206,6 +207,7 @@ end
 
 #Scan existing files that match watched prefixes and start failing them
 @settings[:tailf][:files].each do |tailf_file|
+  tailf_file[:prefix] = File.expand_path(tailf_file[:prefix])
   dir = File.dirname(tailf_file[:prefix])
   if File.exists?(dir) and File.directory?(dir)
     @dirs[dir] ||= []
@@ -233,8 +235,19 @@ def delete_old_tailed_files
           @logger.info("Deleteing old time pattern fully kafka produced file #{path}")
           FileUtils.rm_r(path)
           if @settings[:tailf].has_key?(:post_delete_command)
+            @logger.info("Running post delete command => #{@settings[:tailf][:post_delete_command]}")
             command = Mixlib::ShellOut.new(@settings[:tailf][:post_delete_command])
-            command.run_command
+            begin
+              command.run_command
+              if command.error?
+                @logger.error("Failed post delete command => #{@settings[:tailf][:post_delete_command]}")
+                @logger.info("STDOUT: #{command.stdout}")
+                @logger.info("STDERR: #{command.stderr}")
+              end
+            rescue => e
+              @logger.error("Failed post delete command => #{@settings[:tailf][:post_delete_command]}")
+              @logger.info(e.message)
+            end
           end
         end
       end
