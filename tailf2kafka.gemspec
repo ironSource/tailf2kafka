@@ -22,6 +22,7 @@ Gem::Specification.new do |s|
   s.add_dependency('rb-inotify')
   s.add_dependency('timers')
   s.add_dependency('mixlib-shellout')
+  s.add_dependency('activesupport', '~> 4.2.6')
 
   s.add_development_dependency('rake')
 
