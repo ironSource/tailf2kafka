@@ -55,8 +55,9 @@ validator = Schash::Validator.new do
         time_pattern: string,
       }),
       position_file: string,
-      flush_interval: integer,
-      max_batch_lines: integer,
+      flush_interval: optional(integer),
+      max_batch_lines: optional(integer),
+      max_batches: optional(integer),
       from_begining: boolean,
       delete_old_tailed_files: optional(boolean),
       post_delete_command: optional(string),
@@ -65,7 +66,7 @@ validator = Schash::Validator.new do
       brokers: array_of(string),
       producer_type: match(/^(sync|async)$/),
       produce: optional(boolean),
-    },
+    }
   }
 end
 
@@ -87,10 +88,11 @@ end
 @files = {}
 @threads = {}
 @position_file = @settings[:tailf][:position_file]
-@flush_interval = @settings[:tailf][:flush_interval]
-@max_batch_lines = @settings[:tailf][:max_batch_lines]
+@flush_interval = @settings[:tailf].has_key?(:flush_interval) ? @settings[:tailf][:flush_interval] : 1
+@max_batch_lines = @settings[:tailf].has_key?(:max_batch_lines) ? @settings[:tailf][:max_batch_lines] : 1024
+@max_batches = @settings[:tailf].has_key?(:max_batches) ? @settings[:tailf][:max_batches] : 10
 @from_begining = @settings[:tailf][:from_begining]
-@delete_old_tailed_files = @settings[:tailf].has_key?(:delete_old_tailed_files) ?  @settings[:tailf][:delete_old_tailed_files] : false
+@delete_old_tailed_files = @settings[:tailf].has_key?(:delete_old_tailed_files) ? @settings[:tailf][:delete_old_tailed_files] : false
 @brokers = @settings[:kafka][:brokers]
 @producer_type = @settings[:kafka][:producer_type].to_sym
 @produce = @settings[:kafka].has_key?(:produce) ? @settings[:kafka][:produce] : true
@@ -123,7 +125,7 @@ load_position_file
 @topics = @settings[:tailf][:files].map{|tailf_file| tailf_file[:topic]}
 @producer = Poseidon::Producer.new(@brokers, "#{Socket.gethostname}", :type => @producer_type, :compression_codec => :snappy, :compressed_topics => @topics) if @produce
 
-@producer_queue = SizedQueue.new(10)
+@producer_queue = SizedQueue.new(@max_batches * 10)
 
 @producer_thread = Thread.new do
   loop do
@@ -177,7 +179,7 @@ def tailf(path)
   @tailf_notifier.watch(path, :modify) do |event|
     mutex.synchronize do
       unless file.closed?
-        loop do
+        (1..@max_batches).each do |i|
           batch = file.each_line.take(@max_batch_lines)
           break if batch.empty?
           batch.unshift(truncated + batch.shift) if truncated
