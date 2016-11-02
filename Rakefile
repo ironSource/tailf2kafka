@@ -6,5 +6,5 @@ task :build do
 end
  
 task :release => :build do
-  system "gem push tailf2kafka-#{Tailf2Kafka::VERSION}.gem"
+  system "gem push tailf2kafka-#{Tailf2Kafka::VERSION}.gem --host https://ironsrc.artifactoryonline.com/ironsrc/api/gems/ssa-devops-gems"
 end
