@@ -116,7 +116,7 @@ def kafka_connect
     max_retries: 2,
     retry_backoff: 1,
     compression_codec: :snappy,
-    max_buffer_size: (@settings[:tailf].has_key?(:max_batch_lines) ? @settings[:tailf][:max_batch_lines] : 1024) + 1
+    max_buffer_size: @max_batch_lines + 1
   )
 end
 
