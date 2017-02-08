@@ -43,6 +43,7 @@ unless @config
 end
 
 @logger = Logger.new(STDOUT)
+@logger.level = @loglevel
 
 @settings = YAML.load_file(@config).symbolize_keys(true)
 
@@ -64,7 +65,7 @@ validator = Schash::Validator.new do
       post_delete_command: optional(string),
     },
     kafka: {
-      brokers: optional(string),
+      brokers: optional(array_of(string)),
       consul_service: optional(string),
       consul_tag: optional(string),
       connect_timeout: optional(integer),
