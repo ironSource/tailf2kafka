@@ -54,7 +54,7 @@ validator = Schash::Validator.new do
         topic: string,
         prefix: string,
         suffix: optional(string),
-        time_pattern: string,
+        time_pattern: string
       }),
       position_file: string,
       flush_interval: optional(integer),
@@ -62,7 +62,7 @@ validator = Schash::Validator.new do
       max_batches: optional(integer),
       from_begining: boolean,
       delete_old_tailed_files: optional(boolean),
-      post_delete_command: optional(string),
+      post_delete_command: optional(string)
     },
     kafka: {
       brokers: optional(array_of(string)),
@@ -70,7 +70,7 @@ validator = Schash::Validator.new do
       consul_tag: optional(string),
       connect_timeout: optional(integer),
       socket_timeout: optional(integer),
-      produce: optional(boolean),
+      produce: optional(boolean)
     }
   }
 end
@@ -87,7 +87,6 @@ end
 
 @create_notifier = INotify::Notifier.new
 @delete_notifier = INotify::Notifier.new
-@tailf_notifier = INotify::Notifier.new
 
 @dirs = {}
 @files = {}
@@ -152,14 +151,20 @@ kafka_connect if @produce
 
 @producer_queue = SizedQueue.new(@max_batches * 10)
 
+@partition_key = 0
+
 @producer_thread = Thread.new do
   loop do
     batch = @producer_queue.pop
     if @produce
+      @partition_key += 1
+      partition = @partition_key.to_s
+      puts batch[:messages].size
       begin
         batch[:messages].each do |msg|
-          @producer.produce(msg, topic: batch[:topic])
+          @producer.produce(msg, topic: batch[:topic], partition_key: partition)
         end
+        batch[:messages] = []
         @producer.deliver_messages
       rescue Kafka::DeliveryFailed
         @logger.warn("Producer failed to deliver messages to brokers, retrying in 1 second ...")
@@ -205,8 +210,10 @@ def tailf(path)
     truncated = kafka_produce(path, batch, file.pos)
   end
 
+  notifier = INotify::Notifier.new
+
   mutex = Mutex.new
-  @tailf_notifier.watch(path, :modify) do |event|
+  notifier.watch(path, :modify) do |event|
     mutex.synchronize do
       unless file.closed?
         (1..@max_batches).each do |i|
@@ -219,6 +226,14 @@ def tailf(path)
         @logger.warn("watcher got modify event on closed file #{event.name}")
       end
     end
+  end
+
+  loop do
+    time_before = Time.now
+    notifier.process
+    time_after = Time.now
+    time_left = @settings[:tailf][:flush_interval] - (time_before - time_after)
+    sleep time_left if time_left > 0
   end
 end
 
@@ -328,7 +343,4 @@ Thread.new { loop { @timers.wait } }
 
 end
 
-Thread.new { @create_notifier.run }
-Thread.new { @delete_notifier.run }
-
-@tailf_notifier.run
+[ Thread.new { @create_notifier.run }, Thread.new { @delete_notifier.run } ].each{|t| t.join}
